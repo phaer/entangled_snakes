@@ -76,6 +76,36 @@
             inherit (self.lib) project;
             inherit python;
           };
+
+        loadProject = projectRoot:
+          (if builtins.pathExists /${projectRoot}/pyproject.toml
+           then self.lib.pyproject.project.loadPyproject
+           else self.lib.pyproject.project.loadRequirementsTxt)
+            {
+              inherit projectRoot;
+            };
+
+        fixtures = let
+          lib = nixpkgs.lib;
+          names =
+            (lib.attrNames
+              (lib.filterAttrs
+                (_: v: v == "directory")
+                (builtins.readDir ./fixtures)));
+          projects =
+            lib.genAttrs names (path: self.lib.loadProject ./fixtures/${path});
+          packages = python:
+            lib.mapAttrs
+              (name: project:
+                python.pkgs.buildPythonPackage
+                  (project.renderers.buildPythonPackage {
+                    inherit python;
+                  }))
+              projects;
+        in
+          {
+            inherit names projects packages;
+          };
       };
 
       perSystem = {

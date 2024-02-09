@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyproject_simple"
+version = "0.1"
+description = "pyproject_simple example for entangled_snakes"
+requires-python = ">=3.10"
+
+dependencies = [
+    "pdm",
+    "tomli",
+    "tomli-w",
+    "rich",
+]
+
+[project.optional-dependencies]
+dev = ["ipython"]
