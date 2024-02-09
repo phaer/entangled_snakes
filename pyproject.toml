@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "entangled_snakes"
+version = "0.1"
+authors = [
+    {name = "Paul Haerle", email = "hello@phaer.org"},
+]
+description = "Experiments with python packaging"
+requires-python = ">=3.10"
+
+dependencies = [
+    "pdm",
+    "tomli",
+    "tomli-w",
+    "rich",
+]
+
+[project.optional-dependencies]
+dev = ["ipython"]
+
+[project.scripts]
+entangled_snakes = "entangled_snakes.cli:main"
