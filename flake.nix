@@ -71,12 +71,6 @@
           inherit (self.lib) projectRoot;
         };
 
-        nonMatchingDependencies = python:
-          self.lib.pyproject.validators.validateChecks {
-            inherit (self.lib) project;
-            inherit python;
-          };
-
         loadProject = projectRoot:
           (if builtins.pathExists /${projectRoot}/pyproject.toml
            then self.lib.pyproject.project.loadPyproject
@@ -85,8 +79,13 @@
               inherit projectRoot;
             };
 
+        validateConstraints = import ./validateConstraints.nix {
+          lib = self.lib.nixpkgs;
+          inherit (self.lib.pyproject) pep440 pep508 pep621 pypa;
+        };
+
         fixtures = let
-          lib = nixpkgs.lib;
+          inherit (nixpkgs) lib;
           overrides = {
             requirements_txt.pyproject.project = {
               name = "requirements.txt";
@@ -98,12 +97,13 @@
             pyproject_complex.pyproject.project.version = "0.1";
           };
           names =
-            (lib.attrNames
+            lib.attrNames
               (lib.filterAttrs
                 (_: v: v == "directory")
-                (builtins.readDir ./fixtures)));
+                (builtins.readDir ./fixtures));
           projects =
             lib.genAttrs names (path: self.lib.loadProject ./fixtures/${path});
+
           packages = python:
             lib.mapAttrs
               (name: project:
@@ -116,9 +116,18 @@
                   )
               )
               projects;
+
+          dependenciesToFetch = python: extras:
+            lib.mapAttrs
+              (name: project:
+                self.lib.validateConstraints.validateConstraints {
+                  inherit project python extras;
+                }
+              )
+              projects;
         in
           {
-            inherit names projects packages;
+            inherit names projects packages dependenciesToFetch;
           };
       };
 
@@ -153,7 +162,7 @@
 
         packages = {
           default = entangledSnakes;
-          entangledSnakes = entangledSnakes;
+          inherit entangledSnakes;
 
           python = pkgs.python3.override {
             self = pkgs.python3;
