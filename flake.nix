@@ -87,6 +87,16 @@
 
         fixtures = let
           lib = nixpkgs.lib;
+          overrides = {
+            requirements_txt.pyproject.project = {
+              name = "requirements.txt";
+              version = "0.1";
+            };
+            # FIXME error by default, but document overriding or using ifd
+            # to acquire dynamic versions
+            pyproject_simple.pyproject.project.version = "0.1";
+            pyproject_complex.pyproject.project.version = "0.1";
+          };
           names =
             (lib.attrNames
               (lib.filterAttrs
@@ -98,9 +108,13 @@
             lib.mapAttrs
               (name: project:
                 python.pkgs.buildPythonPackage
-                  (project.renderers.buildPythonPackage {
-                    inherit python;
-                  }))
+                  (
+                    self.lib.pyproject.renderers.buildPythonPackage {
+                      inherit python;
+                      project = lib.recursiveUpdate project (overrides.${name} or {});
+                    }
+                  )
+              )
               projects;
         in
           {
