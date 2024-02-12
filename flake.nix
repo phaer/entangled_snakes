@@ -34,20 +34,24 @@
         inputs.pre-commit-hooks-nix.flakeModule
       ];
 
-      flake.lib = {
-        # Re-exporting libraries here is useful during nix development,
-        # as they can be quickly accessed in a 'nix repl', after ':lf .',
-        # via 'lib' or 'outputs.lib'.
-        nixpkgs = nixpkgs.lib;
+      flake.lib = import ./lib/default.nix {
+        inherit (nixpkgs) lib;
         pyproject = pyproject-nix.lib;
+      };
 
+      perSystem = {
+        self',
+        lib,
+        pkgs,
+        ...
+      }: let
         # We could use 'projectRoot = ./.;' here, but that would mean
         # that the input for our python environment would change every
         # time any file in our git repo changes, and trigger a rebuild.
         # So we filter the files using 'nixpkgs.lib.fileset' and
         # copy them to a dedicated storePath.
         projectRoot = let
-          fs = nixpkgs.lib.fileset;
+          fs = lib.fileset;
         in
           fs.toSource {
             root = ./.;
@@ -55,7 +59,7 @@
               # fs.traceVal  # remove the first '#' to get a trace
               # of the resulting store path and it's content
               fs.difference
-              (fs.fromSource (nixpkgs.lib.sources.cleanSource ./.))
+              (fs.fromSource (lib.sources.cleanSource ./.))
               (fs.unions [
                 (fs.fileFilter (file: file.hasExt "nix") ./.)
                 (fs.maybeMissing ./result)
@@ -67,85 +71,18 @@
 
         # Load pyproject.toml metadata from the root directory of the
         # this flake, after copying that to the nix store.
-        project = self.lib.pyproject.project.loadPyproject {
-          inherit (self.lib) projectRoot;
+        project = inputs.pyproject-nix.lib.project.loadPyproject {
+          inherit projectRoot;
         };
 
-        loadProject = projectRoot:
-          (if builtins.pathExists /${projectRoot}/pyproject.toml
-           then self.lib.pyproject.project.loadPyproject
-           else self.lib.pyproject.project.loadRequirementsTxt)
-            {
-              inherit projectRoot;
-            };
-
-        validateConstraints = import ./validateConstraints.nix {
-          lib = self.lib.nixpkgs;
-          inherit (self.lib.pyproject) pep440 pep508 pep621 pypa;
-        };
-
-        fixtures = let
-          inherit (nixpkgs) lib;
-          overrides = {
-            requirements_txt.pyproject.project = {
-              name = "requirements.txt";
-              version = "0.1";
-            };
-            # FIXME error by default, but document overriding or using ifd
-            # to acquire dynamic versions
-            pyproject_simple.pyproject.project.version = "0.1";
-            pyproject_complex.pyproject.project.version = "0.1";
-          };
-          names =
-            lib.attrNames
-              (lib.filterAttrs
-                (_: v: v == "directory")
-                (builtins.readDir ./fixtures));
-          projects =
-            lib.genAttrs names (path: self.lib.loadProject ./fixtures/${path});
-
-          packages = python:
-            lib.mapAttrs
-              (name: project:
-                python.pkgs.buildPythonPackage
-                  (
-                    self.lib.pyproject.renderers.buildPythonPackage {
-                      inherit python;
-                      project = lib.recursiveUpdate project (overrides.${name} or {});
-                    }
-                  )
-              )
-              projects;
-
-          dependenciesToFetch = python: extras:
-            lib.mapAttrs
-              (name: project:
-                self.lib.validateConstraints.validateConstraints {
-                  inherit project python extras;
-                }
-              )
-              projects;
-        in
-          {
-            inherit names projects packages dependenciesToFetch;
-          };
-      };
-
-      perSystem = {
-        self',
-        lib,
-        pkgs,
-        system,
-        ...
-      }: let
         args = {
           # A python interpreter taken from our flake outputs, or straight from pkgs.python3.
           inherit (self'.packages) python;
           # Our project as represented by pyproject-nix and loaded above.
-          inherit (self.lib) project;
+          inherit project;
         };
         withPackagesArgs =
-          self.lib.pyproject.renderers.withPackages
+          inputs.pyproject-nix.lib.renderers.withPackages
           (args
             // {
               extras = ["dev"];
@@ -153,7 +90,7 @@
         pythonEnv = args.python.withPackages withPackagesArgs;
 
         buildPythonPackageArgs =
-          self.lib.project.renderers.buildPythonPackage args;
+          project.renderers.buildPythonPackage args;
         entangledSnakes = args.python.pkgs.buildPythonPackage buildPythonPackageArgs;
       in {
         devShells.default = pkgs.mkShell {

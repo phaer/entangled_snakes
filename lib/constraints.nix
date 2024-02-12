@@ -15,15 +15,14 @@ in {
     self.validateExtrasConstraints
   ];
 
-
-  validateConstraints = {
+  validate = {
     # Project metadata as returned by `lib.project.loadPyproject`
     project,
     # Python derivation
     python,
     # Python extras (optionals) to enable
     extras ? [],
-      validators ? self.validators,
+    validators ? self.validators,
   }: let
     filteredDeps = pep621.filterDependencies {
       inherit (project) dependencies;
@@ -34,28 +33,30 @@ in {
     flatDeps = filteredDeps.dependencies ++ flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems;
   in
     lib.foldl'
-      (acc: validator:
-        let
-          result = lib.partition (x: !(x ? "failure")) (map validator acc.right);
-        in
-        { right = result.right; wrong = acc.wrong ++ result.wrong; }
-      )
-      { right = flatDeps; wrong = []; }
-      validators';
-
+    (
+      acc: validator: let
+        result = lib.partition (x: !(x ? "failure")) (map validator acc.right);
+      in {
+        inherit (result) right;
+        wrong = acc.wrong ++ result.wrong;
+      }
+    )
+    {
+      right = flatDeps;
+      wrong = [];
+    }
+    validators';
 
   validateExistenceInPackageSet = {python}: dependency: let
     pname = pypa.normalizePackageName dependency.name;
   in
     if lib.hasAttr pname python.pkgs
     then dependency
-    else
-      {
-        failure.existence = {
-          name = pname;
-        };
-      }
-  ;
+    else {
+      failure.existence = {
+        name = pname;
+      };
+    };
 
   validateVersionConstraints = {python}: dependency: let
     pname = pypa.normalizePackageName dependency.name;
@@ -65,14 +66,13 @@ in {
   in
     if incompatible == []
     then dependency
-    else
-      {
-        failure.version = {
-          name = pname;
-          version = pversion;
-          conditions = incompatible;
-        };
+    else {
+      failure.version = {
+        name = pname;
+        version = pversion;
+        conditions = incompatible;
       };
+    };
 
   /*
   Checks whether pkgs.python contains all extras declared in the parsed project.
@@ -87,12 +87,11 @@ in {
   in
     if missing == [] || unknown == []
     then dependency
-    else
-      {
-        failure.extra = {
-          name = pname;
-          inherit missing;
-          inherit unknown;
-        };
+    else {
+      failure.extra = {
+        name = pname;
+        inherit missing;
+        inherit unknown;
       };
+    };
 })
