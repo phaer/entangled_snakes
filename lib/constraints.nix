@@ -30,7 +30,9 @@ in {
       inherit extras;
     };
     validators' = map (fn: fn {inherit python;}) validators;
-    flatDeps = filteredDeps.dependencies ++ flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems;
+    flatDeps =
+      map (dep: dep // {pname = pypa.normalizePackageName dep.name;})
+      (filteredDeps.dependencies ++ flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems);
   in
     lib.foldl'
     (
@@ -47,51 +49,54 @@ in {
     }
     validators';
 
-  validateExistenceInPackageSet = {python}: dependency: let
-    pname = pypa.normalizePackageName dependency.name;
-  in
-    if lib.hasAttr pname python.pkgs
+  validateExistenceInPackageSet = {python}: dependency:
+    if lib.hasAttr dependency.pname python.pkgs
     then dependency
-    else {
-      failure.existence = {
-        name = pname;
+    else
+      dependency
+      // {
+        failure = {
+          type = "existence";
+        };
       };
-    };
 
   validateVersionConstraints = {python}: dependency: let
-    pname = pypa.normalizePackageName dependency.name;
-    pversion = python.pkgs.${pname}.version;
-    version = pep440.parseVersion python.pkgs.${pname}.version;
+    pversion = python.pkgs.${dependency.pname}.version;
+    version = pep440.parseVersion python.pkgs.${dependency.pname}.version;
     incompatible = lib.filter (cond: ! pep440.comparators.${cond.op} version cond.version) dependency.conditions;
   in
     if incompatible == []
     then dependency
-    else {
-      failure.version = {
-        name = pname;
-        version = pversion;
-        conditions = incompatible;
+    else
+      dependency
+      // {
+        failure = {
+          type = "version";
+          found = pversion;
+          inherit incompatible;
+        };
       };
-    };
 
   /*
   Checks whether pkgs.python contains all extras declared in the parsed project.
   */
   validateExtrasConstraints = {python}: dependency: let
-    pname = pypa.normalizePackageName dependency.name;
-    pkg = python.pkgs.${pname};
+    pkg = python.pkgs.${dependency.pname};
     optionalDeps = pkg.passthru.optional-dependencies or {};
-    known = lib.filter (extra: optionalDeps ? extra) dependency.extras;
-    missing = lib.filter (extra: (lib.subtractLists pkg.propagatedBuildInputs optionalDeps.${extra}) != []) known;
-    unknown = lib.subtractLists known dependency.extras;
+    found = lib.filter (extra: optionalDeps ? extra) dependency.extras;
+    missing = lib.filter (extra: (lib.subtractLists pkg.propagatedBuildInputs optionalDeps.${extra}) != []) found;
+    unknown = lib.subtractLists found dependency.extras;
   in
     if missing == [] || unknown == []
     then dependency
-    else {
-      failure.extra = {
-        name = pname;
-        inherit missing;
-        inherit unknown;
+    else
+      dependency
+      // {
+        failure = {
+          type = "extra";
+          inherit found;
+          inherit missing;
+          inherit unknown;
+        };
       };
-    };
 })
