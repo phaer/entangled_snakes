@@ -49,14 +49,18 @@ in {
     }
     validators';
 
-  validateExistenceInPackageSet = {python}: dependency:
-    if lib.hasAttr dependency.pname python.pkgs
+  validateExistenceInPackageSet = {python}: dependency: let
+    exists = lib.hasAttr dependency.pname python.pkgs;
+    evaluates = (builtins.tryEval python.pkgs.${dependency.pname}).success;
+  in
+    if exists && evaluates
     then dependency
     else
       dependency
       // {
         failure = {
           type = "existence";
+          evaluationError = exists && !evaluates;
         };
       };
 
