@@ -110,6 +110,25 @@
               pdm = self.toPythonModule pkgs.pdm;
             };
           };
+
+          # https://github.com/NixOS/nix/issues/2678
+          dependencies-to-fetch = pkgs.writers.writeBashBin "dependencies-to-fetch" ''
+            set -eu
+            projectRoot=$1
+            python="''${2:-${self}#python}"
+            extras="''${3:-}"
+            nix eval \
+              --json \
+              --impure \
+              --apply \
+              "python: (builtins.getFlake \"${self}\").lib.dependenciesToFetch
+              {
+                inherit python;
+                projectRoot = $projectRoot;
+                extras = $extras;
+              }" \
+              $python
+          '';
         };
 
         treefmt = {

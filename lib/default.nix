@@ -22,4 +22,20 @@ lib.fix (self: {
     inherit lib pyproject;
     inherit (self) constraints loadProject;
   };
+
+  dependenciesToFetch = {
+    python,
+    projectRoot,
+    extras ? []
+  }: let
+    project = self.loadProject projectRoot;
+    extras' =
+      if extras == []
+      then lib.attrNames (project.pyproject.project.optional-dependencies or {})
+      else extras;
+  in
+    self.constraints.validate {
+      inherit project python;
+      extras = extras';
+    };
 })
