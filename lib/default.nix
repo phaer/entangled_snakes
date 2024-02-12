@@ -26,11 +26,13 @@ lib.fix (self: {
   dependenciesToFetch = {
     python,
     projectRoot,
-    extras ? []
+    # extras is either a list of strings, or the boolean value true to include
+    # all extras, even if no extra named "all" is defined in the project.
+    extras ? [],
   }: let
     project = self.loadProject projectRoot;
     extras' =
-      if extras == []
+      if extras == true
       then lib.attrNames (project.pyproject.project.optional-dependencies or {})
       else extras;
   in

@@ -116,7 +116,7 @@
             set -eu
             projectRoot=$1
             python="''${2:-${self}#python}"
-            extras="''${3:-}"
+            extras="''${3:-true}"
             nix eval \
               --json \
               --impure \
