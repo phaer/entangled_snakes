@@ -50,19 +50,23 @@ lib.fix (self: {
         # TODO add requested extras here
       })
       validated.right;
+    fromNixpkgsCount = builtins.length fromNixpkgs;
     toFetch = validated.wrong;
+    toFetchCount = builtins.length toFetch;
+
   in {
     inherit fromNixpkgs toFetch;
-    info = ''
-        # ${project.pyproject.project.name or "unnamed project"} at ${projectRoot}
-
-        ## The following ${toString (builtins.length fromNixpkgs)} dependencies are re-used from nixpkgs:
-        - ${lib.concatMapStringsSep "\n- " (d: "${d.pname} ${d.version}") fromNixpkgs}
-
-        ## The following ${toString (builtins.length toFetch)} dependencies need to be locked:
-        - ${lib.concatMapStringsSep "\n- " self.messages.formatFailure toFetch}
-    '';
-
+    info = lib.concatStringsSep "\n" ([
+        "# ${project.pyproject.project.name or "unnamed project"} at ${projectRoot}"
+    ]
+    ++ lib.optionals (fromNixpkgsCount > 0) [
+        "\n## The following ${toString fromNixpkgsCount} dependencies will be re-used from the current package set:"
+        "- ${lib.concatMapStringsSep "\n- " (d: "${d.pname} ${d.version}") fromNixpkgs}"
+    ]
+    ++ lib.optionals (toFetchCount > 0) [
+        "\n## The following ${toString toFetchCount} dependencies need to be locked:"
+        "- ${lib.concatMapStringsSep "\n- " self.messages.formatFailure toFetch}"
+    ]);
   };
 
   makeBuildEnvironment = {
