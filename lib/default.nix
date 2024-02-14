@@ -40,4 +40,19 @@ lib.fix (self: {
       inherit project python;
       extras = extras';
     };
+
+  makeBuildEnvironment = {
+    python,
+    requirements,
+  }: let
+    dependencies = map (r: pyproject.pep508.parseString r) requirements;
+    validated = self.constraints.validateDependencies {
+      inherit dependencies python;
+    };
+  in
+    if validated.wrong != []
+    # TODO better error formatting, format & print reasons for mismatch
+    then throw "build requirements could not be satisfied by the current package set: ${toString requirements}"
+    else
+      python.withPackages(ps: map (d: ps.${d.pname}) validated.right);
 })

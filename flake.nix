@@ -138,6 +138,26 @@
               }" \
               $python
           '';
+
+          # Take a python interpreter and a set of constraints, i.e. from build-system.requires,
+          # check whether those constraint match a python package from the given interpreter
+          # and if so, prepare a python environment with only the build-requirements installed.
+          # This is used internally for pep517-compatible builds.
+          make-build-environment = pkgs.writers.writeBashBin "make-build-environment" ''
+            set -eu
+            requirements=$1
+            python="''${2:-${self}#python}"
+            nix eval \
+              --raw \
+              --impure \
+              --apply \
+              "python: (builtins.getFlake \"${self}\").lib.makeBuildEnvironment
+              {
+                inherit python;
+                requirements = [$requirements];
+              }" \
+              $python
+          '';
         };
 
         treefmt = {
