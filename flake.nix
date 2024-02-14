@@ -148,7 +148,7 @@
             requirements=$1
             python="''${2:-${self}#python}"
             nix eval \
-              --raw \
+              --json \
               --impure \
               --apply \
               "python: (builtins.getFlake \"${self}\").lib.makeBuildEnvironment

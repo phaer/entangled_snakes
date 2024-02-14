@@ -23,6 +23,10 @@ lib.fix (self: {
     inherit (self) constraints loadProject;
   };
 
+  messages = import ./messages.nix {
+    inherit lib;
+  };
+
   dependenciesToFetch = {
     python,
     projectRoot,
@@ -35,11 +39,31 @@ lib.fix (self: {
       if extras == true
       then lib.attrNames (project.pyproject.project.optional-dependencies or {})
       else extras;
-  in
-    self.constraints.validate {
+    validated = self.constraints.validate {
       inherit project python;
       extras = extras';
     };
+    fromNixpkgs =
+      map (dependency: {
+        inherit (dependency) pname;
+        inherit (python.pkgs.${dependency.pname}) version;
+        # TODO add requested extras here
+      })
+      validated.right;
+    toFetch = validated.wrong;
+  in {
+    inherit fromNixpkgs toFetch;
+    info = ''
+        # ${project.pyproject.project.name or "unnamed project"} at ${projectRoot}
+
+        ## The following ${toString (builtins.length fromNixpkgs)} dependencies are re-used from nixpkgs:
+        - ${lib.concatMapStringsSep "\n- " (d: "${d.pname} ${d.version}") fromNixpkgs}
+
+        ## The following ${toString (builtins.length toFetch)} dependencies need to be locked:
+        - ${lib.concatMapStringsSep "\n- " self.messages.formatFailure toFetch}
+    '';
+
+  };
 
   makeBuildEnvironment = {
     python,
@@ -51,8 +75,13 @@ lib.fix (self: {
     };
   in
     if validated.wrong != []
-    # TODO better error formatting, format & print reasons for mismatch
-    then throw "build requirements could not be satisfied by the current package set: ${toString requirements}"
-    else
-      python.withPackages(ps: map (d: ps.${d.pname}) validated.right);
+    then {
+      error = ''
+        build requirements could not be satisfied by the current package set:
+         - ${lib.concatMapStringsSep "\n- " self.messages.formatFailure validated.wrong}
+      '';
+    }
+    else {
+      success = python.withPackages(ps: map (d: ps.${d.pname}) validated.right);
+    };
 })
