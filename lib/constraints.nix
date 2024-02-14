@@ -6,9 +6,8 @@
   pypa,
   ...
 }:
-lib.fix (self: let
-  inherit (lib) flatten;
-in {
+lib.fix (self:
+{
   validators = [
     self.validateExistenceInPackageSet
     self.validateVersionConstraints
@@ -29,10 +28,20 @@ in {
       environ = pep508.mkEnviron python;
       inherit extras;
     };
+    dependencies =
+      (filteredDeps.dependencies ++ lib.flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems);
+    in
+      self.validateDependencies {
+        inherit dependencies python validators;
+      };
+
+  validateDependencies = {
+    dependencies,
+    # Python derivation
+    python,
+    validators ? self.validators,
+  }: let
     validators' = map (fn: fn {inherit python;}) validators;
-    flatDeps =
-      map (dep: dep // {pname = pypa.normalizePackageName dep.name;})
-      (filteredDeps.dependencies ++ flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems);
   in
     lib.foldl'
     (
@@ -44,7 +53,7 @@ in {
       }
     )
     {
-      right = flatDeps;
+      right = map (dep: dep // {pname = pypa.normalizePackageName dep.name;}) dependencies;
       wrong = [];
     }
     validators';
