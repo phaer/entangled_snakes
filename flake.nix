@@ -147,16 +147,28 @@
             set -eu
             requirements=$1
             python="''${2:-${self}#python}"
-            nix eval \
+            result="$(nix eval \
               --json \
               --impure \
               --apply \
-              "python: (builtins.getFlake \"${self}\").lib.makeBuildEnvironment
-              {
-                inherit python;
-                requirements = [$requirements];
-              }" \
+              "python: let
+                result = (builtins.getFlake \"${self}\").lib.makeBuildEnvironment {
+                  inherit python;
+                  requirements = [$requirements];
+                };
+                in if result ? "success"
+                then builtins.mapAttrs (n: v: v.drvPath) result
+                else result" \
               $python
+            )"
+            drvPath="$(echo "$result" | jq -r .success)"
+            if [[ "$drvPath" != "null" ]]
+            then
+              result="$(jq --null-input \
+                 --arg storePath "$(nix build -L --no-link --print-out-paths "$drvPath^out")" \
+                 '{success: "\($storePath)"}')"
+            fi
+            echo $result
           '';
         };
 
