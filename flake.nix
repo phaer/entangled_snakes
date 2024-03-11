@@ -9,13 +9,9 @@
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
     pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
     pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
-    pre-commit-hooks-nix.inputs.flake-compat.follows = "pyproject-nix/mdbook-nixdoc/crane/flake-compat";
-    pre-commit-hooks-nix.inputs.flake-utils.follows = "pyproject-nix/mdbook-nixdoc/crane/flake-utils";
 
     pyproject-nix.url = "github:nix-community/pyproject.nix";
     pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
-    pyproject-nix.inputs.flake-parts.follows = "flake-parts";
-    pyproject-nix.inputs.treefmt-nix.follows = "treefmt-nix";
   };
 
   outputs = inputs @ {
