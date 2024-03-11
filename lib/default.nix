@@ -44,14 +44,18 @@ lib.fix (self: {
       extras = extras';
     };
     fromNixpkgs =
-      map (dependency: {
-        inherit (dependency) pname;
+      map (dependency: let
+        inherit (dependency) pname extras;
         inherit (python.pkgs.${dependency.pname}) version;
-        # TODO add requested extras here
+      in  {
+        inherit pname version extras;
+        pin = "${pname}==${version}";
       })
       validated.right;
     fromNixpkgsCount = builtins.length fromNixpkgs;
-    toFetch = validated.wrong;
+    toFetch = map (dep:
+      dep // { pin = lib.concatMapStringsSep " " (c: "${dep.name}${c.op}${self.messages.formatVersion c.version}") dep.conditions; }
+    ) validated.wrong;
     toFetchCount = builtins.length toFetch;
 
   in {
