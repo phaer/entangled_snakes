@@ -13,7 +13,7 @@ from .nix import (
 def info_command(args):
     python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     project = evaluate_project(
-        project_root=args.project,
+        project_root=args.project.removesuffix("/"),
         python=python,
         # TODO extras
     )
