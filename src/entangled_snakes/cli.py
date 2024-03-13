@@ -1,14 +1,14 @@
 import argparse
 import logging
 import json
-from .nix import evaluate_project, SELF_FLAKE, DEFAULT_PYTHON_ATTR
+from .nix import PythonInterpreter, evaluate_project, SELF_FLAKE, DEFAULT_PYTHON_ATTR
 
 
 def info_command(args):
+    python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     project = evaluate_project(
         project_root=args.project,
-        python_flake=args.python_flake,
-        python_attr=args.python_attr,
+        python=python,
         # TODO extras
     )
     if args.json:

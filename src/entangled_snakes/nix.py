@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import sys
 import logging
 import collections.abc
@@ -25,10 +26,27 @@ def nix_eval(expr, raw=False, check=True):
         return json.loads(proc.stdout)
 
 
+@dataclass
+class PythonInterpreter:
+    flake: Path | str = SELF_FLAKE
+    attr: str = DEFAULT_PYTHON_ATTR
+
+    def resolve_system(self):
+        try:
+            current_system = nix_eval("builtins.currentSystem", raw=True)
+        except subprocess.CalledProcessError as e:
+            log.fatal(f"Nix error while getting builtins.currentSystem: {e.stderr}")
+            sys.exit(1)
+        self.attr = self.attr.replace("$system", current_system)
+        return self
+
+    def as_nix_snippet(self):
+        return f'(builtins.getFlake "{self.flake}").{self.attr}'
+
+
 def evaluate_project(
     project_root: Path,
-    python_flake: Path | str = SELF_FLAKE,
-    python_attr: str = DEFAULT_PYTHON_ATTR,
+    python: PythonInterpreter,
     extras: bool | Sequence[str] = True,
 ):
     """
@@ -47,17 +65,10 @@ def evaluate_project(
         extras = str(extras).lower()
 
     try:
-        current_system = nix_eval("builtins.currentSystem", raw=True)
-    except subprocess.CalledProcessError as e:
-        log.fatal(f"Nix error while getting builtins.currentSystem: {e.stderr}")
-        sys.exit(1)
-
-    python_attr = python_attr.replace("$system", current_system)
-    try:
         return nix_eval(
             f"""
               (builtins.getFlake "{SELF_FLAKE}").lib.dependenciesToFetch {{
-                python = (builtins.getFlake \"{python_flake}\").{python_attr};
+                python = {python.as_nix_snippet()};
                 projectRoot = {project_root};
                 extras = {extras};
               }}
