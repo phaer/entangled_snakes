@@ -107,34 +107,6 @@
             };
           };
 
-          # Parse dependency constraints from a pep621-compliant pyproject.toml
-          # in the given projectRoot. Verify whether those constraints match
-          # a python package from the given interpreter and the declared extras.
-          # If so, return a pin for the matched version.
-          # If not, return the constraints.
-          # Both together can be used by our python script, to resolve the
-          # missing dependencies while considering those from the interpreter
-          # as fixed.
-          # See https://github.com/NixOS/nix/issues/2678 for why it's so cumbersome
-          # to just call a nix function from shell.
-          dependencies-to-fetch = pkgs.writers.writeBashBin "dependencies-to-fetch" ''
-            set -eu
-            projectRoot=$1
-            python="''${2:-${self}#python}"
-            extras="''${3:-true}"
-            nix eval \
-              --json \
-              --impure \
-              --apply \
-              "python: (builtins.getFlake \"${self}\").lib.dependenciesToFetch
-              {
-                inherit python;
-                projectRoot = $projectRoot;
-                extras = $extras;
-              }" \
-              $python
-          '';
-
           # Take a python interpreter and a set of constraints, i.e. from build-system.requires,
           # check whether those constraint match a python package from the given interpreter
           # and if so, prepare a python environment with only the build-requirements installed.
