@@ -1,7 +1,13 @@
 import argparse
 import logging
 import json
-from .nix import PythonInterpreter, evaluate_project, SELF_FLAKE, DEFAULT_PYTHON_ATTR
+from .nix import (
+    PythonInterpreter,
+    evaluate_project,
+    SELF_FLAKE,
+    DEFAULT_PYTHON_ATTR,
+    make_build_environment,
+)
 
 
 def info_command(args):
@@ -15,6 +21,11 @@ def info_command(args):
         print(json.dumps(project))
     else:
         print(project.get("info"))
+
+
+def make_build_env_command(args):
+    python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
+    print(make_build_environment(python, args.requirements))
 
 
 def build_command(args):
@@ -32,20 +43,27 @@ def main():
         "-j", "--json", action="store_true", default=False, help="print json output"
     )
 
-    command_parsers = arg_parser.add_subparsers(required=True)
-    parser_info = command_parsers.add_parser("info")
-    parser_info.add_argument("project", help="path to a python project")
-    parser_info.add_argument(
+    arg_parser.add_argument(
         "--python-flake",
         help="flake to get a python package set from.\ni.e. 'github:nixos/nixpkgs/nixos-unstable'",
         default=SELF_FLAKE,
     )
-    parser_info.add_argument(
+    arg_parser.add_argument(
         "--python-attr",
         help="attribute of the flake to get a python package set from\ni.e. 'legacyPackages.$system.python3'",
         default=DEFAULT_PYTHON_ATTR,
     )
+
+    command_parsers = arg_parser.add_subparsers(required=True)
+    parser_info = command_parsers.add_parser("info")
+    parser_info.add_argument("project", help="path to a python project")
     parser_info.set_defaults(func=info_command)
+
+    parser_make_build_env = command_parsers.add_parser("make-build-environment")
+    parser_make_build_env.add_argument(
+        "requirements", nargs="*", help="list of pep508 requirements"
+    )
+    parser_make_build_env.set_defaults(func=make_build_env_command)
 
     parser_build = command_parsers.add_parser("build")
     parser_build.set_defaults(func=build_command)

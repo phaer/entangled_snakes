@@ -77,3 +77,38 @@ def evaluate_project(
     except subprocess.CalledProcessError as e:
         log.fatal(f"Nix error while evaluating project {project_root}: {e.stderr}")
         sys.exit(1)
+
+
+def make_build_environment(
+    python: PythonInterpreter,
+    requirements: Sequence[str] = [],
+):
+    """
+    Take a python interpreter and a list of constraints, i.e. from build-system.requires,
+    check whether those constraint match a python package from the given interpreter
+    and if so, prepare a python environment with only the build-requirements installed.
+    This is used internally for pep517-compatible builds.
+    """
+    error_context = (
+        f"Error while preparing build environment for {' '.join(requirements)}"
+    )
+    try:
+        result = nix_eval(
+            f"""
+            (builtins.getFlake "{SELF_FLAKE}").lib.makeBuildEnvironment {{
+              python = {python.as_nix_snippet()};
+              requirements = ["{ '" "'.join(requirements)}"];
+            }}
+            """,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        log.fatal(f"Nix {error_context}: {e.stderr}")
+        sys.exit(1)
+
+    error = result.get("error")
+    if error:
+        log.fatal(f"{error_context}: {error}")
+        sys.exit(1)
+
+    return result.get("success")

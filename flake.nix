@@ -106,38 +106,6 @@
               pdm = self.toPythonModule pkgs.pdm;
             };
           };
-
-          # Take a python interpreter and a set of constraints, i.e. from build-system.requires,
-          # check whether those constraint match a python package from the given interpreter
-          # and if so, prepare a python environment with only the build-requirements installed.
-          # This is used internally for pep517-compatible builds.
-          make-build-environment = pkgs.writers.writeBashBin "make-build-environment" ''
-            set -eu
-            requirements=$1
-            python="''${2:-${self}#python}"
-            result="$(nix eval \
-              --json \
-              --impure \
-              --apply \
-              "python: let
-                result = (builtins.getFlake \"${self}\").lib.makeBuildEnvironment {
-                  inherit python;
-                  requirements = [$requirements];
-                };
-                in if result ? "success"
-                then builtins.mapAttrs (n: v: v.drvPath) result
-                else result" \
-              $python
-            )"
-            drvPath="$(echo "$result" | jq -r .success)"
-            if [[ "$drvPath" != "null" ]]
-            then
-              result="$(jq --null-input \
-                 --arg storePath "$(nix build -L --no-link --print-out-paths "$drvPath^out")" \
-                 '{success: "\($storePath)"}')"
-            fi
-            echo $result
-          '';
         };
 
         treefmt = {
