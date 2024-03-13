@@ -14,6 +14,17 @@ SELF_FLAKE = (Path(__file__) / "../../..").resolve()
 DEFAULT_PYTHON_ATTR = "packages.$system.python"
 
 
+def nix_eval(expr, raw=False, check=True):
+    fmt = "--raw" if raw else "--json"
+    args = ["nix", "eval", fmt, "--impure", "--expr", expr]
+    logging.debug(f"running {args}")
+    proc = subprocess.run(args, check=check, capture_output=True, encoding="utf-8")
+    if raw:
+        return proc.stdout
+    else:
+        return json.loads(proc.stdout)
+
+
 def evaluate_project(
     project_root: Path,
     python_flake: Path | str = SELF_FLAKE,
@@ -36,34 +47,22 @@ def evaluate_project(
         extras = str(extras).lower()
 
     try:
-        current_system = subprocess.run(
-            ["nix", "eval", "--raw", "--impure", "--expr", "builtins.currentSystem"],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-        ).stdout
+        current_system = nix_eval("builtins.currentSystem", raw=True)
     except subprocess.CalledProcessError as e:
         log.fatal(f"Nix error while getting builtins.currentSystem: {e.stderr}")
         sys.exit(1)
 
     python_attr = python_attr.replace("$system", current_system)
-    args = [
-        "nix",
-        "eval",
-        "--json",
-        "--impure",
-        "--expr",
-        f"""
-          (builtins.getFlake "{SELF_FLAKE}").lib.dependenciesToFetch {{
-            python = (builtins.getFlake \"{python_flake}\").{python_attr};
-            projectRoot = {project_root};
-            extras = {extras};
-          }}
-        """,
-    ]
     try:
-        proc = subprocess.run(args, check=True, capture_output=True, encoding="utf-8")
-        return json.loads(proc.stdout)
+        return nix_eval(
+            f"""
+              (builtins.getFlake "{SELF_FLAKE}").lib.dependenciesToFetch {{
+                python = (builtins.getFlake \"{python_flake}\").{python_attr};
+                projectRoot = {project_root};
+                extras = {extras};
+              }}
+            """,
+        )
     except subprocess.CalledProcessError as e:
         log.fatal(f"Nix error while evaluating project {project_root}: {e.stderr}")
         sys.exit(1)
