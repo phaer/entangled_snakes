@@ -18,12 +18,23 @@ DEFAULT_PYTHON_ATTR = "packages.$system.python"
 def nix_eval(expr, raw=False, check=True):
     fmt = "--raw" if raw else "--json"
     args = ["nix", "eval", fmt, "--impure", "--expr", expr]
-    logging.debug(f"running {args}")
+    logging.debug(f"evaluating {args}")
     proc = subprocess.run(args, check=check, capture_output=True, encoding="utf-8")
     if raw:
         return proc.stdout
     else:
         return json.loads(proc.stdout)
+
+
+def nix_build(installable: str, output="out", raw=False, check=True):
+    fmt = "" if raw else "--json"
+    args = ["nix", "build", "--no-link", fmt, f"{installable}^{output}"]
+    logging.debug(f"building {args}")
+    proc = subprocess.run(args, check=check, capture_output=True, encoding="utf-8")
+    if raw:
+        return proc.stdout
+    else:
+        return json.loads(proc.stdout)[0]
 
 
 @dataclass
@@ -111,4 +122,6 @@ def make_build_environment(
         log.fatal(f"{error_context}: {error}")
         sys.exit(1)
 
-    return result.get("success")
+    drv_path = result.get("success")
+    out = nix_build(drv_path).get("outputs", {}).get("out")
+    return out
