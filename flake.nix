@@ -100,10 +100,12 @@
           python = pkgs.python3.override {
             self = pkgs.python3;
             packageOverrides = self: _super: {
-              # pdm is exposed as a toplevel package (pkgs.pdm) in nixpkgs,
-              # but exposes all required python attributes, so we add it
-              # to our package set here, as we need it for resolving.
+              # pdm and maturin are exposed as a toplevel package (pkgs.pdm)
+              # in nixpkgs, but exposes all required python attributes, so we
+              # add them to our package set here, as we might need them for
+              # resolving.
               pdm = self.toPythonModule pkgs.pdm;
+              maturin = self.toPythonModule pkgs.maturin;
             };
           };
         };
