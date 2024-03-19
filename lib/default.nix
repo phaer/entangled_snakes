@@ -45,10 +45,12 @@ lib.fix (self: {
     };
     fromNixpkgs =
       map (dependency: let
+        drv = python.pkgs.${dependency.pname};
         inherit (dependency) pname extras;
-        inherit (python.pkgs.${dependency.pname}) version;
+        inherit (drv) version;
       in  {
         inherit pname version extras;
+        drv = drv.drvPath;
         pin = "${pname}==${version}";
       })
       validated.right;

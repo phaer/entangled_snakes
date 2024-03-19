@@ -7,6 +7,7 @@ from .nix import (
     SELF_FLAKE,
     DEFAULT_PYTHON_ATTR,
     make_build_environment,
+    nix_get_wheel_from_derivation,
 )
 
 
@@ -17,6 +18,11 @@ def info_command(args):
         python=python,
         # TODO extras
     )
+
+    for package in project.get("fromNixpkgs", []):
+        if package.get("drv", None):
+            package.update(wheel=nix_get_wheel_from_derivation(package["drv"]))
+
     if args.json:
         print(json.dumps(project))
     else:

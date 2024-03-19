@@ -16,6 +16,7 @@ DEFAULT_PYTHON_ATTR = "packages.$system.python"
 
 
 def nix_eval(expr, raw=False, check=True):
+    "Evaluate the given nix expr and return a json value"
     fmt = "--raw" if raw else "--json"
     args = ["nix", "eval", fmt, "--impure", "--expr", expr]
     logging.debug(f"evaluating {args}")
@@ -27,6 +28,8 @@ def nix_eval(expr, raw=False, check=True):
 
 
 def nix_build(installable: str, output="out", raw=False, check=True):
+    """build a given nix installable (i.e. a drvPath) and return the selected
+    output as json"""
     fmt = "" if raw else "--json"
     args = ["nix", "build", "--no-link", fmt, f"{installable}^{output}"]
     logging.debug(f"building {args}")
@@ -34,11 +37,29 @@ def nix_build(installable: str, output="out", raw=False, check=True):
     if raw:
         return proc.stdout
     else:
-        return json.loads(proc.stdout)[0]
+        return json.loads(proc.stdout)[0].get("outputs", {}).get(output)
+
+
+def nix_get_wheel_from_derivation(drv: str):
+    """Return a nix-built wheel from the given python package derivation"""
+    built = nix_build(drv, "dist")
+    wheels = list(Path(built).glob("*.whl"))
+    if wheels:
+        assert len(wheels) == 1
+        return str(wheels[0])
+    else:
+        return None
 
 
 @dataclass
 class PythonInterpreter:
+    """Thin abstraction to generate nix code that loads a nix python interpreter
+    from a given flake and attribute.
+
+    defaults to entangled_snakes wrapped python, but could be i.e.
+    nixpkgs#legacyPackages.$system.python3
+    """
+
     flake: Path | str = SELF_FLAKE
     attr: str = DEFAULT_PYTHON_ATTR
 
@@ -123,5 +144,5 @@ def make_build_environment(
         sys.exit(1)
 
     drv_path = result.get("success")
-    out = nix_build(drv_path).get("outputs", {}).get("out")
+    out = nix_build(drv_path)
     return out
