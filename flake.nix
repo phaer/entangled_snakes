@@ -122,6 +122,11 @@
           programs.alejandra.enable = true;
 
           # Python
+          programs.mypy.enable = true;
+          programs.mypy.directories."./src" = {
+            options = [ "--strict" "-m" ];
+            modules = ["entangled_snakes"];
+          };
           programs.black.enable = true;
           programs.ruff.enable = true;
         };

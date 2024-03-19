@@ -11,7 +11,7 @@ from .nix import (
 )
 
 
-def info_command(args):
+def info_command(args: argparse.Namespace) -> None:
     python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     project = evaluate_project(
         project_root=args.project.removesuffix("/"),
@@ -29,16 +29,16 @@ def info_command(args):
         print(project.get("info"))
 
 
-def make_build_env_command(args):
+def make_build_env_command(args: argparse.Namespace) -> None:
     python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     print(make_build_environment(python, args.requirements))
 
 
-def build_command(args):
+def build_command(args: argparse.Namespace) -> None:
     print("build", args)
 
 
-def main():
+def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
         "-l",
