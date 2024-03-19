@@ -36,7 +36,7 @@ lib.fix (self: {
   }: let
     project = self.loadProject projectRoot;
     extras' =
-      if extras == true
+      if extras
       then lib.attrNames (project.pyproject.project.optional-dependencies or {})
       else extras;
     validated = self.constraints.validate {
@@ -48,31 +48,33 @@ lib.fix (self: {
         drv = python.pkgs.${dependency.pname};
         inherit (dependency) pname extras;
         inherit (drv) version;
-      in  {
+      in {
         inherit pname version extras;
         drv = drv.drvPath;
         pin = "${pname}==${version}";
       })
       validated.right;
     fromNixpkgsCount = builtins.length fromNixpkgs;
-    toFetch = map (dep:
-      dep // { pin = lib.concatMapStringsSep " " (c: "${dep.name}${c.op}${self.messages.formatVersion c.version}") dep.conditions; }
-    ) validated.wrong;
+    toFetch =
+      map (
+        dep:
+          dep // {pin = lib.concatMapStringsSep " " (c: "${dep.name}${c.op}${self.messages.formatVersion c.version}") dep.conditions;}
+      )
+      validated.wrong;
     toFetchCount = builtins.length toFetch;
-
   in {
     inherit fromNixpkgs toFetch;
     info = lib.concatStringsSep "\n" ([
         "# ${project.pyproject.project.name or "unnamed project"} at ${projectRoot}"
-    ]
-    ++ lib.optionals (fromNixpkgsCount > 0) [
+      ]
+      ++ lib.optionals (fromNixpkgsCount > 0) [
         "\n## The following ${toString fromNixpkgsCount} dependencies will be re-used from the current package set:"
         "- ${lib.concatMapStringsSep "\n- " (d: "${d.pname} ${d.version}") fromNixpkgs}"
-    ]
-    ++ lib.optionals (toFetchCount > 0) [
+      ]
+      ++ lib.optionals (toFetchCount > 0) [
         "\n## The following ${toString toFetchCount} dependencies need to be locked:"
         "- ${lib.concatMapStringsSep "\n- " self.messages.formatFailure toFetch}"
-    ]);
+      ]);
   };
 
   makeBuildEnvironment = {
@@ -92,6 +94,6 @@ lib.fix (self: {
       '';
     }
     else {
-      success = (python.withPackages(ps: map (d: ps.${d.pname}) validated.right)).drvPath;
+      success = (python.withPackages (ps: map (d: ps.${d.pname}) validated.right)).drvPath;
     };
 })

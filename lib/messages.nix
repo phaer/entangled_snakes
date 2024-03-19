@@ -21,37 +21,38 @@ lib.fix (self: {
   formatCondition = condition: "${condition.op}${self.formatVersion condition.version}";
 
   formatVersionFailure = failure: [
-      "version ${failure.found} does not match constraints:"
-      (lib.concatMapStringsSep ", " self.formatCondition failure.incompatible)
-    ];
+    "version ${failure.found} does not match constraints:"
+    (lib.concatMapStringsSep ", " self.formatCondition failure.incompatible)
+  ];
   formatExistenceFailure = failure:
     if failure.evaluationError
     then "failed to evaluate"
     else "does not exist";
   formatExtraFailure = failure:
     with failure;
-    if missing != []
-    then ["is configured without extras:" (lib.concatStringsSep ", " missing)]
-    else if unknown != []
-    then ["does not know about extras:" (lib.concatStringsSep ", " unknown)]
-    else throw "Unhandled extra failure";
+      if missing != []
+      then ["is configured without extras:" (lib.concatStringsSep ", " missing)]
+      else if unknown != []
+      then ["does not know about extras:" (lib.concatStringsSep ", " unknown)]
+      else throw "Unhandled extra failure";
 
   formatFailure = dependency: let
-    type = dependency.failure.type;
+    inherit (dependency.failure) type;
   in
     lib.concatStringsSep " "
-      (lib.flatten [
-        "${dependency.pname}"
-        ((if type == "version"
+    (lib.flatten [
+      "${dependency.pname}"
+      ((
+          if type == "version"
           then self.formatVersionFailure
           else if type == "existence"
           then self.formatExistenceFailure
           else if type == "extra"
           then self.formatExtraFailure
-          else throw "Unhandled failure type: ${type}")
-          dependency.failure)
-      ]);
-
+          else throw "Unhandled failure type: ${type}"
+        )
+        dependency.failure)
+    ]);
 
   #failure.
 })

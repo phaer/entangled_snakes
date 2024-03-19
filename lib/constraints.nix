@@ -6,8 +6,7 @@
   pypa,
   ...
 }:
-lib.fix (self:
-{
+lib.fix (self: {
   validators = [
     self.validateExistenceInPackageSet
     self.validateVersionConstraints
@@ -29,11 +28,11 @@ lib.fix (self:
       inherit extras;
     };
     dependencies =
-      (filteredDeps.dependencies ++ lib.flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems);
-    in
-      self.validateDependencies {
-        inherit dependencies python validators;
-      };
+      filteredDeps.dependencies ++ lib.flatten (lib.attrValues filteredDeps.extras) ++ filteredDeps.build-systems;
+  in
+    self.validateDependencies {
+      inherit dependencies python validators;
+    };
 
   validateDependencies = {
     dependencies,

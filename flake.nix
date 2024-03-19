@@ -124,7 +124,7 @@
           # Python
           programs.mypy.enable = true;
           programs.mypy.directories."./src" = {
-            options = [ "--strict" "-m" ];
+            options = ["--strict" "-m"];
             modules = ["entangled_snakes"];
           };
           programs.black.enable = true;
