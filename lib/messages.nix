@@ -15,6 +15,7 @@ lib.fix (self: {
         (lib.optionalString (pre != null) "${pre.type}${toString pre.value}")
         (lib.optionalString (post != null) "${post.type}${toString post.value}")
         (lib.optionalString (dev != null) "${dev.type}${toString dev.value}")
+        (lib.optionalString (local != null) "+${toString local}")
       ]))
     ];
 
