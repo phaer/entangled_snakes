@@ -5,6 +5,8 @@ from typing import Sequence, TypedDict
 from subprocess import CalledProcessError
 import collections.abc
 
+import packaging.utils
+
 from . import nix
 
 
@@ -12,17 +14,17 @@ log = logging.getLogger(__name__)
 
 
 class FromNixpkgs(TypedDict):
-    pname: str
-    extras: set[str]
+    pname: packaging.utils.NormalizedName
+    extras: set[packaging.utils.NormalizedName]
     pin: str
     version: str
     drv: str
 
 
 class ToFetch(TypedDict):
-    pname: str
-    extras: set[str]
-    pin: str
+    pname: packaging.utils.NormalizedName
+    extras: set[packaging.utils.NormalizedName]
+    requirements: Sequence[str]
 
 
 class Project(TypedDict):

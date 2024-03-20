@@ -58,7 +58,7 @@ lib.fix (self: {
     toFetch =
       map (
         dep:
-          dep // {pin = lib.concatMapStringsSep " " (c: "${dep.name}${c.op}${self.messages.formatVersion c.version}") dep.conditions;}
+          dep // {requirements = builtins.map (c: "${dep.name}${c.op}${self.messages.formatVersion c.version}") dep.conditions;}
       )
       validated.wrong;
     toFetchCount = builtins.length toFetch;
