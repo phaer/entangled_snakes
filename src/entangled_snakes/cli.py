@@ -1,37 +1,31 @@
 import argparse
 import logging
 import json
-from .nix import (
-    PythonInterpreter,
-    evaluate_project,
-    SELF_FLAKE,
-    DEFAULT_PYTHON_ATTR,
-    make_build_environment,
-    nix_get_wheel_from_derivation,
-)
+
+from . import nix
+from . import project
 
 
 def info_command(args: argparse.Namespace) -> None:
-    python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
-    project = evaluate_project(
+    python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
+    pyproject = project.evaluate_project(
         project_root=args.project.removesuffix("/"),
         python=python,
-        # TODO extras
     )
 
-    for package in project.get("fromNixpkgs", []):
+    for package in pyproject.get("fromNixpkgs", []):
         if package.get("drv", None):
-            package.update(wheel=nix_get_wheel_from_derivation(package["drv"]))
+            package.update(wheel=nix.get_wheel_from_derivation(package["drv"]))
 
     if args.json:
-        print(json.dumps(project))
+        print(json.dumps(pyproject))
     else:
-        print(project.get("info"))
+        print(pyproject.get("info"))
 
 
 def make_build_env_command(args: argparse.Namespace) -> None:
-    python = PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
-    print(make_build_environment(python, args.requirements))
+    python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
+    print(nix.make_build_environment(python, args.requirements))
 
 
 def build_command(args: argparse.Namespace) -> None:
@@ -52,12 +46,12 @@ def main() -> None:
     arg_parser.add_argument(
         "--python-flake",
         help="flake to get a python package set from.\ni.e. 'github:nixos/nixpkgs/nixos-unstable'",
-        default=SELF_FLAKE,
+        default=nix.SELF_FLAKE,
     )
     arg_parser.add_argument(
         "--python-attr",
         help="attribute of the flake to get a python package set from\ni.e. 'legacyPackages.$system.python3'",
-        default=DEFAULT_PYTHON_ATTR,
+        default=nix.DEFAULT_PYTHON_ATTR,
     )
 
     command_parsers = arg_parser.add_subparsers(required=True)
