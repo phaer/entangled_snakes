@@ -4,7 +4,7 @@ import logging
 import subprocess
 import json
 from pathlib import Path
-from typing import Any, Self, Optional, Sequence
+from typing import Any, Self, Sequence
 
 
 log = logging.getLogger(__name__)
@@ -71,15 +71,12 @@ def build(
         return data
 
 
-def get_wheel_from_derivation(drv: str) -> Optional[str]:
+def get_wheel_from_derivation(drv: str) -> Path:
     """Return a nix-built wheel from the given python package derivation"""
     built = build(drv, "dist")
     wheels = list(Path(built).glob("*.whl"))
-    if wheels:
-        assert len(wheels) == 1
-        return str(wheels[0])
-    else:
-        return None
+    assert len(wheels) == 1, f"Could not find exactly 1 wheel in {drv}"
+    return wheels[0]
 
 
 def make_build_environment(
