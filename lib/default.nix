@@ -48,10 +48,17 @@ lib.fix (self: {
         drv = python.pkgs.${dependency.pname};
         inherit (dependency) pname extras;
         inherit (drv) version;
+        findDeps = p:
+          ["${p.pname}==${p.version}"] ++
+          (map findDeps
+            (builtins.filter
+              (i: i ? pythonModule && i != python)
+              p.propagatedBuildInputs));
       in {
         inherit pname version extras;
         drv = drv.drvPath;
         pin = "${pname}==${version}";
+        dependencies = lib.unique (lib.flatten (lib.drop 1 (findDeps drv)));
       })
       validated.right;
     fromNixpkgsCount = builtins.length fromNixpkgs;
