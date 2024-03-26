@@ -15,7 +15,7 @@ def info_command(args: argparse.Namespace) -> None:
 
     for package in pyproject.get("fromNixpkgs", []):
         if package.get("drv", None):
-            package.update(wheel=nix.get_wheel_from_derivation(package["drv"]))
+            package.update(wheel=str(nix.get_wheel_from_derivation(package["drv"])))
 
     if args.json:
         print(json.dumps(pyproject))

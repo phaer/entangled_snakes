@@ -1,7 +1,7 @@
 import sys
 import logging
 from pathlib import Path
-from typing import Sequence, TypedDict
+from typing import Optional, Sequence, TypedDict
 from subprocess import CalledProcessError
 import collections.abc
 
@@ -19,6 +19,7 @@ class FromNixpkgs(TypedDict):
     pin: str
     version: str
     drv: str
+    wheel: Optional[str]
 
 
 class ToFetch(TypedDict):
@@ -64,7 +65,8 @@ def evaluate_project(
             """,
         )
         assert isinstance(data, dict)
-        return Project(**data)
+        project: Project = Project(**data)
+        return project
     except CalledProcessError as e:
         log.fatal(f"Nix error while evaluating project {project_root}: {e.stderr}")
         sys.exit(1)
