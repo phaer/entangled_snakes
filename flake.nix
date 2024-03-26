@@ -57,9 +57,7 @@
               fs.difference
               (fs.fromSource (lib.sources.cleanSource ./.))
               (fs.unions [
-                (fs.fileFilter (file: file.hasExt "nix") ./.)
                 (fs.maybeMissing ./result)
-                (fs.maybeMissing ./flake.lock)
                 (fs.maybeMissing ./.gitignore)
                 (fs.maybeMissing ./.envrc)
               ]);
@@ -86,7 +84,13 @@
         pythonEnv = args.python.withPackages withPackagesArgs;
 
         buildPythonPackageArgs =
-          project.renderers.buildPythonPackage args;
+          (project.renderers.buildPythonPackage args) // {
+            # Copy nix code to the built derivation, so that python can call it
+            # during runtime.
+            postInstall = ''
+              cp -rv "$src/flake.nix" "$src/flake.lock" "$src/lib" $out
+            '';
+          };
         entangledSnakes = args.python.pkgs.buildPythonPackage buildPythonPackageArgs;
       in {
         devShells.default = pkgs.mkShell {
