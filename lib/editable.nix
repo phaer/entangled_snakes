@@ -1,0 +1,109 @@
+{ lib }: { python, project }:
+let
+  projectRoot =
+    if lib.isString project.projectRoot
+    then project.projectRoot
+    else throw ''
+    projectRoot needs to be a string in makeEditable, because we need a
+    reference to the working directory, outside the nix store, for a correct
+    editable install.
+  '';
+  # Default to setuptools legacy as per PEP517
+  requires' = project.pyproject.build-system.requires or ["setuptools"];
+  # Packages using setuptools often implicitly require "wheel" to create
+  # the .dist-info directory.
+  requires = requires' ++ lib.optionals (lib.elem "setuptools" requires') ["wheel"];
+  backend = project.pyproject.build-system.build-backend or "setuptools.build_meta.__legacy__";
+  backendImport =
+    if backend != "setuptools.build_meta.__legacy__"
+    then backend
+    else "setuptools.build_meta";
+  # Lookup our build-requirements in nixpkgs. This is
+  # to naive at the moment
+  # TODO use lib.makeBuildEnvironment
+  makePythonPath = python: requirements:
+    lib.concatMapStringsSep
+      ":"
+      (
+        name: let
+          p = python.pkgs.${name};
+        in "${p}/${python.sitePackages}"
+      )
+      (["python"] ++ requirements);
+  editable = builtins.derivation {
+    inherit (python.stdenv) system;
+    name = "${project.pyproject.project.name or "unnamed"}-editable";
+    # TODO filter source here to avoid unecessary rebuilds
+    src = /. + projectRoot;
+    PYTHONPATH = makePythonPath python requires;
+    builder = "${python}/bin/python";
+    # Editable wheels are local by definition.
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+    args = [
+      "-c"
+      ''
+          import os
+          import json
+          import shutil
+          import importlib.metadata
+          from pathlib import Path
+          import ${backendImport};
+
+          out = Path(os.getenv("out"))
+          out.mkdir()
+
+          editable_source = Path("${projectRoot}")
+
+          src = Path(os.getenv("src"))
+          os.chdir(src)
+          # Call the build-backend as per PEP660
+          dist_info = ${backend}.prepare_metadata_for_build_editable(out)
+
+          # remove .egg_info if it exists, as it's unecessary and might confuse other tools.
+          for egg_info in out.glob("*.egg-info"):
+            shutil.rmtree(egg_info)
+
+          # write direct_url.json as per PEP 660
+          direct_json_path = out / dist_info / "direct_url.json"
+          with open(direct_json_path, 'w') as f:
+            data = {
+              "url": f"file://{editable_source}",
+              "dir_info": {
+                "editable": True
+              }
+            }
+            json.dump(data, f, indent=2)
+
+          # TODO Replace this by a better heuristic to find out whether the
+          # current project uses src layout or not.
+          if (src / "src").exists():
+            editable_source = editable_source / "src"
+
+          # write .pth file, commented out because we don't
+          # use it atm.
+          #pth_path = Path(out / dist_info).with_suffix('.pth')
+          #with open(pth_path, 'w') as f:
+          #  f.write(f"{editable_source}\n")
+
+          # get console_scripts from entrypoints
+          distribution = importlib.metadata.Distribution.at(out / dist_info)
+          console_scripts = distribution.entry_points.select(group='console_scripts')
+
+          # TODO support other entrypoints
+
+          # write editable.sh
+          # TODO shellhook
+          with open(out / "editable.sh", "w") as f:
+            aliases = "\n".join([
+              f"alias {script.name}='${python}/bin/python -m {script.value}'"
+              for script in console_scripts])
+            f.write(f"""
+              export PYTHONPATH={editable_source}:{out}:$PYTHONPATH
+              {aliases}
+            """)
+        ''
+    ];
+  };
+in
+editable.drvPath

@@ -28,8 +28,10 @@ def make_build_env_command(args: argparse.Namespace) -> None:
     print(nix.make_build_environment(python, args.requirements))
 
 
-def build_command(args: argparse.Namespace) -> None:
-    print("build", args)
+def make_editable_command(args: argparse.Namespace) -> None:
+    python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
+    project_root = args.project.removesuffix("/")
+    print(project.make_editable(project_root, python))
 
 
 def main() -> None:
@@ -65,8 +67,9 @@ def main() -> None:
     )
     parser_make_build_env.set_defaults(func=make_build_env_command)
 
-    parser_build = command_parsers.add_parser("build")
-    parser_build.set_defaults(func=build_command)
+    parser_make_editable = command_parsers.add_parser("make-editable")
+    parser_make_editable.add_argument("project", help="path to a python project")
+    parser_make_editable.set_defaults(func=make_editable_command)
 
     args = arg_parser.parse_args()
     logging.basicConfig(level=args.log_level.upper())

@@ -68,3 +68,27 @@ def evaluate_project(
     except CalledProcessError as e:
         log.fatal(f"Nix error while evaluating project {project_root}: {e.stderr}")
         sys.exit(1)
+
+
+def make_editable(project_root: Path, python: nix.PythonInterpreter):
+    try:
+        drv_path = nix.evaluate(
+            f"""
+              let
+                flake = builtins.getFlake "{nix.SELF_FLAKE}";
+                project = flake.lib.loadProject "{project_root}";
+                python = {python.as_nix_snippet()};
+              in
+                flake.lib.makeEditable {{
+                  inherit python project;
+                }}
+            """,
+            raw=True,
+        )
+        assert isinstance(drv_path, str)
+        built = nix.build(drv_path)
+        assert isinstance(built, str)
+        return built
+    except CalledProcessError as e:
+        log.fatal(f"Nix error while evaluating project {project_root}: {e.stderr}")
+        sys.exit(1)

@@ -96,4 +96,6 @@ lib.fix (self: {
     else {
       success = (python.withPackages (ps: map (d: ps.${d.pname}) validated.right)).drvPath;
     };
+
+  makeEditable = import ./editable.nix { inherit lib; };
 })
