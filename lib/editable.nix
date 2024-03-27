@@ -90,6 +90,10 @@ let
           with open(pth_path, 'w') as f:
             f.write(f"{editable_source}\n")
 
+          # get toplevel modules
+          with open(site_packages / dist_info / "top_level.txt", "r") as f:
+            top_level_modules = [l.strip() for l in f.readlines()]
+
           # get console_scripts from entrypoints
           distribution = importlib.metadata.Distribution.at(site_packages / dist_info)
           console_scripts = distribution.entry_points.select(group='console_scripts')
@@ -98,11 +102,18 @@ let
           # TODO shellhook
           with open(out / "shellHook.sh", "w") as f:
             aliases = "\n".join([
-              f"alias {script.name}='${python}/bin/python -m {script.value}'"
+              f"alias {script.name}='${python}/bin/python -m {script.value}'; echo '- {script.name}'"
               for script in console_scripts])
+            imports = "\n".join([
+              f"${python}/bin/python -c \"import {module}; print('- {module} ->', {module}.__path__[0])\""
+              for module in top_level_modules
+            ])
             f.write(f"""
               export PYTHONPATH={site_packages}:$PYTHONPATH
+              echo console_scripts:
               {aliases}
+              echo modules:
+              {imports}
             """)
         ''
     ];
