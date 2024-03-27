@@ -12,7 +12,9 @@ description = "Experiments with python packaging"
 requires-python = ">=3.10"
 
 dependencies = [
-    "pdm",
+    "packaging",
+    "resolvelib",
+    "requests",
     "tomli",
     "tomli-w",
     "rich",
