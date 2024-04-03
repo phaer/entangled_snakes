@@ -96,6 +96,11 @@
       in {
         devShells.default = pkgs.mkShell {
           packages = [pythonEnv];
+
+          shellHook = ''
+            editable="$(nix run .# -- make-editable "$(pwd)")"
+            source "$editable/shellHook.sh"
+          '';
         };
 
         packages = {
