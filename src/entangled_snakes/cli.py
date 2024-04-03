@@ -9,7 +9,7 @@ from . import project
 def info_command(args: argparse.Namespace) -> None:
     python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     pyproject = project.evaluate_project(
-        project_root=args.project.removesuffix("/"),
+        project_root=args.project,
         python=python,
     )
 
@@ -30,7 +30,7 @@ def make_build_env_command(args: argparse.Namespace) -> None:
 
 def make_editable_command(args: argparse.Namespace) -> None:
     python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
-    project_root = args.project.removesuffix("/")
+    project_root = args.project
     print(project.make_editable(project_root, python))
 
 

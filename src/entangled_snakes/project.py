@@ -35,7 +35,7 @@ class Project(TypedDict):
 
 
 def evaluate_project(
-    project_root: Path,
+    project_root: str | Path,
     python: nix.PythonInterpreter,
     extras: bool | Sequence[str] = True,
 ) -> Project:
@@ -49,6 +49,10 @@ def evaluate_project(
     missing dependencies while considering those from the interpreter
     as fixed.
     """
+    if isinstance(project_root, str):
+        project_root = Path(project_root)
+    project_root = project_root.absolute()
+
     if isinstance(extras, collections.abc.Sequence):
         extras = "[" + (" ".join(extras)) + "]"
     else:
