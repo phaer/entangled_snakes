@@ -1,9 +1,12 @@
 import os
-import json
+import stat
 import shutil
+import json
 import importlib
 import importlib.metadata
 from pathlib import Path
+from textwrap import dedent
+
 
 backend_package = importlib.import_module(os.environ["backendImport"])
 backend_package_name = backend_package.__name__
@@ -16,6 +19,10 @@ if len(backend_module_name):
 
 out = Path(os.environ["out"])
 out.mkdir()
+
+out_bin = out / "bin"
+out_bin.mkdir()
+
 site_packages = out / os.environ["sitePackages"]
 site_packages.mkdir(parents=True)
 
@@ -58,13 +65,23 @@ distribution = importlib.metadata.Distribution.at(site_packages / dist_info)
 console_scripts = distribution.entry_points.select(group="console_scripts")
 # TODO support other entrypoints
 
+for console_script in console_scripts:
+    script_path = out_bin / console_script.name
+    module, function = console_script.value.split(":", 1)
+    with open(script_path, "w") as f:
+        f.write(
+            dedent(
+                f"""
+          #!/usr/bin/env python3
+          from {module} import {function}
+          {function}()
+        """
+            ).strip()
+        )
+    script_path.chmod(script_path.stat().st_mode | stat.S_IEXEC)
+
 with open(out / "shellHook.sh", "w") as f:
-    aliases = "\n".join(
-        [
-            f"alias {script.name}='python -m {script.value}'; echo '- {script.name}'"
-            for script in console_scripts
-        ]
-    )
+    aliases = "\n".join([f"echo {script.name}" for script in console_scripts])
     imports = "\n".join(
         [
             f"python -c \"import {module}; print('- {module} ->', {module}.__path__[0])\""
@@ -72,11 +89,14 @@ with open(out / "shellHook.sh", "w") as f:
         ]
     )
     f.write(
-        f"""
+        dedent(
+            f"""
     export PYTHONPATH={site_packages}:{editable_source}:$PYTHONPATH
     echo "modules:"
     {imports}
+    export PATH={out_bin}:$PATH
     echo "console_scripts:"
     {aliases}
   """
+        ).strip()
     )
