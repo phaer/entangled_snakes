@@ -9,10 +9,12 @@ from typing import Any, Self, Sequence
 
 log = logging.getLogger(__name__)
 
+
 def find_entangled_snakes_flake() -> Path:
     """Search the directory tree upwards from the currents scripts path
     in search of flake.nix from this project in order to execute nix
     functions from flake.lib"""
+
     def find_upwards(filename: str, path: Path) -> Path:
         if (path / filename).exists():
             return path
@@ -20,6 +22,7 @@ def find_entangled_snakes_flake() -> Path:
             raise Exception("Could not find entangled_snakes flake.nix")
         else:
             return find_upwards(filename, path.parent)
+
     return find_upwards("flake.nix", Path(__file__).resolve())
 
 

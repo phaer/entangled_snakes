@@ -49,8 +49,8 @@ lib.fix (self: {
         inherit (dependency) pname extras;
         inherit (drv) version;
         findDeps = p:
-          ["${p.pname}==${p.version}"] ++
-          (map findDeps
+          ["${p.pname}==${p.version}"]
+          ++ (map findDeps
             (builtins.filter
               (i: i ? pythonModule && i != python)
               p.propagatedBuildInputs));
@@ -104,5 +104,5 @@ lib.fix (self: {
       success = (python.withPackages (ps: map (d: ps.${d.pname}) validated.right)).drvPath;
     };
 
-  makeEditable = import ./editable.nix { inherit lib; };
+  makeEditable = import ./editable.nix {inherit lib;};
 })

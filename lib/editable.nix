@@ -1,13 +1,16 @@
-{ lib }: { python, project }:
-let
+{lib}: {
+  python,
+  project,
+}: let
   projectRoot =
     if lib.isString project.projectRoot
     then project.projectRoot
-    else throw ''
-    projectRoot needs to be a string in makeEditable, because we need a
-    reference to the working directory, outside the nix store, for a correct
-    editable install.
-  '';
+    else
+      throw ''
+        projectRoot needs to be a string in makeEditable, because we need a
+        reference to the working directory, outside the nix store, for a correct
+        editable install.
+      '';
   # Default to setuptools legacy as per PEP517
   requires' = project.pyproject.build-system.requires or ["setuptools"];
   # Packages using setuptools often implicitly require "wheel" to create
@@ -23,13 +26,13 @@ let
   # TODO use lib.makeBuildEnvironment
   makePythonPath = python: requirements:
     lib.concatMapStringsSep
-      ":"
-      (
-        name: let
-          p = python.pkgs.${name};
-        in "${p}/${python.sitePackages}"
-      )
-      (["python"] ++ requirements);
+    ":"
+    (
+      name: let
+        p = python.pkgs.${name};
+      in "${p}/${python.sitePackages}"
+    )
+    (["python"] ++ requirements);
   editable = builtins.derivation {
     inherit (python.stdenv) system;
     name = "${project.pyproject.project.name or "unnamed"}-editable";
@@ -119,4 +122,4 @@ let
     ];
   };
 in
-editable.drvPath
+  editable.drvPath

@@ -84,7 +84,8 @@
         pythonEnv = args.python.withPackages withPackagesArgs;
 
         buildPythonPackageArgs =
-          (project.renderers.buildPythonPackage args) // {
+          (project.renderers.buildPythonPackage args)
+          // {
             # Copy nix code to the built derivation, so that python can call it
             # during runtime.
             postInstall = ''
