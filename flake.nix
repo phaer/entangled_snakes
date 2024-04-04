@@ -109,13 +109,28 @@
 
           python = pkgs.python3.override {
             self = pkgs.python3;
-            packageOverrides = self: _super: {
+            packageOverrides = self: super: {
               # pdm and maturin are exposed as a toplevel package (pkgs.pdm)
               # in nixpkgs, but exposes all required python attributes, so we
               # add them to our package set here, as we might need them for
               # resolving.
               pdm = self.toPythonModule pkgs.pdm;
               maturin = self.toPythonModule pkgs.maturin;
+
+              # https://github.com/NixOS/nixpkgs/pull/253239
+              resolvelib = let
+                version = "1.0.1";
+              in
+                super.resolvelib.overridePythonAttrs {
+                  inherit version;
+                  src = pkgs.fetchFromGitHub {
+                    owner = "sarugaku";
+                    repo = "resolvelib";
+                    rev = "/refs/tags/${version}";
+                    hash = "sha256-oxyPn3aFPOyx/2aP7Eg2ThtPbyzrFT1JzWqy6GqNbzM=";
+                  };
+                };
+
             };
           };
         };
