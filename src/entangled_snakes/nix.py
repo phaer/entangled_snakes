@@ -5,7 +5,7 @@ import subprocess
 import json
 from pathlib import Path
 from typing import Any, Self, Sequence
-
+from base64 import b64encode, b16decode
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def evaluate(expr: str, raw: bool = False, check: bool = True) -> str | dict[str
     "Evaluate the given nix expr and return a json value"
     fmt = "--raw" if raw else "--json"
     args = ["nix", "eval", fmt, "--impure", "--expr", expr]
-    logging.debug(f"evaluating {args}")
+    log.debug(f"evaluating {args}")
     proc = subprocess.run(args, check=check, capture_output=True, encoding="utf-8")
     if raw:
         return proc.stdout
@@ -77,7 +77,7 @@ def build(
     output as json"""
     fmt = "" if raw else "--json"
     args = ["nix", "build", "--no-link", fmt, f"{installable}^{output}"]
-    logging.debug(f"building {args}")
+    log.debug(f"building {args}")
     proc = subprocess.run(args, check=check, capture_output=True, encoding="utf-8")
     if raw:
         return proc.stdout
@@ -93,6 +93,31 @@ def get_wheel_from_derivation(drv: str) -> Path:
     wheels = list(Path(built).glob("*.whl"))
     assert len(wheels) == 1, f"Could not find exactly 1 wheel in {drv}"
     return wheels[0]
+
+
+def prefetch(url: str, expected_hash=None):
+    """
+    Let nix download the given url, write it to the nix store and
+    compare the hashes, if given.
+    """
+    args = [
+        "nix",
+        "store",
+        "prefetch-file",
+        "--hash-type",
+        "sha256",
+        "--json",
+        url,
+    ]
+    log.debug("pre-fetching {args}")
+    proc = subprocess.run(args, check=True, capture_output=True, encoding="utf-8")
+    nix_out = json.loads(proc.stdout)
+    nix_hash = nix_out.get("hash")
+    if expected_hash:
+        assert (
+            expected_hash == nix_hash
+        ), f"hash mismatch for {url}:\nfound: {nix_hash}\nexpected: {expected_hash}"
+    return nix_out.get("storePath")
 
 
 def make_build_environment(
@@ -131,3 +156,9 @@ def make_build_environment(
     drv_path = result.get("success")
     assert isinstance(drv_path, str)
     return build(drv_path)
+
+
+def pypi_to_nix_hash(hashes):
+    typ = "sha256"
+    nix_hash = b64encode(b16decode(hashes[typ].upper())).decode("utf-8")
+    return f"{typ}-{nix_hash}"

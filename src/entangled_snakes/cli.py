@@ -4,6 +4,7 @@ import json
 
 from . import nix
 from . import project
+from . import lock
 
 
 def info_command(args: argparse.Namespace) -> None:
@@ -32,6 +33,15 @@ def make_editable_command(args: argparse.Namespace) -> None:
     python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
     project_root = args.project
     print(project.make_editable(project_root, python))
+
+
+def lock_command(args: argparse.Namespace) -> None:
+    python = nix.PythonInterpreter(args.python_flake, args.python_attr).resolve_system()
+    pyproject = project.evaluate_project(
+        project_root=args.project,
+        python=python,
+    )
+    lock.lock(pyproject)
 
 
 def main() -> None:
@@ -70,6 +80,10 @@ def main() -> None:
     parser_make_editable = command_parsers.add_parser("make-editable")
     parser_make_editable.add_argument("project", help="path to a python project")
     parser_make_editable.set_defaults(func=make_editable_command)
+
+    parser_lock = command_parsers.add_parser("lock")
+    parser_lock.add_argument("project", help="path to a python project")
+    parser_lock.set_defaults(func=lock_command)
 
     args = arg_parser.parse_args()
     logging.basicConfig(level=args.log_level.upper())

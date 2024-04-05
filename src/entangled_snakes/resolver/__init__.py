@@ -1,6 +1,5 @@
 import packaging.utils
 import packaging.version
-import packaging.metadata
 from typing import NamedTuple
 
 
@@ -51,7 +50,8 @@ class Distribution:
     def is_sdist(self) -> bool:
         return self.filename.endswith(".tar.gz") or self.filename.endswith(".zip")
 
-    def _metadata_path(self) -> str:
+    @property
+    def metadata_path(self) -> str:
         if self.is_wheel:
             distribution = self.filename.split("-")[0]
             return f"{distribution}-{self.version}.dist-info/METADATA"
