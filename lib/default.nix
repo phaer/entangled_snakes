@@ -27,6 +27,11 @@ lib.fix (self: {
     inherit lib;
   };
 
+  pep517 = import ./pep517.nix {
+    inherit lib pyproject;
+    inherit (self) constraints messages;
+  };
+
   dependenciesToFetch = {
     python,
     projectRoot,
@@ -84,21 +89,6 @@ lib.fix (self: {
       ]);
   };
 
-  makeBuildEnvironment = {
-    python,
-    requirements,
-  }: let
-    dependencies = map (r: pyproject.pep508.parseString r) requirements;
-    validated = self.constraints.validateDependencies {
-      inherit dependencies python;
-    };
-  in
-    if validated.wrong != []
-    then throw ''
-        build requirements could not be satisfied by the current package set:
-         - ${lib.concatMapStringsSep "\n- " self.messages.formatFailure validated.wrong}
-      ''
-    else python.withPackages (ps: map (d: ps.${d.pname}) validated.right);
 
   makeEditable = import ./editable.nix {inherit lib;};
 })

@@ -136,7 +136,7 @@ def make_build_environment(
     try:
         drv_path = evaluate(
             f"""
-              ((builtins.getFlake "{SELF_FLAKE}").lib.makeBuildEnvironment {{
+              ((builtins.getFlake "{SELF_FLAKE}").lib.pep517.makeBuildEnvironment {{
                 python = {python.as_nix_snippet()};
                 requirements = ["{ '" "'.join(requirements)}"];
               }}).drvPath
