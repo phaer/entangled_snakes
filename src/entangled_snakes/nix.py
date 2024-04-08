@@ -134,26 +134,20 @@ def make_build_environment(
         f"Error while preparing build environment for {' '.join(requirements)}"
     )
     try:
-        result = evaluate(
+        drv_path = evaluate(
             f"""
-            (builtins.getFlake "{SELF_FLAKE}").lib.makeBuildEnvironment {{
-              python = {python.as_nix_snippet()};
-              requirements = ["{ '" "'.join(requirements)}"];
-            }}
+              ((builtins.getFlake "{SELF_FLAKE}").lib.makeBuildEnvironment {{
+                python = {python.as_nix_snippet()};
+                requirements = ["{ '" "'.join(requirements)}"];
+              }}).drvPath
             """,
             check=True,
+            raw=True
         )
     except subprocess.CalledProcessError as e:
         log.fatal(f"Nix {error_context}: {e.stderr}")
         sys.exit(1)
 
-    assert isinstance(result, dict)
-    error = result.get("error")
-    if error:
-        log.fatal(f"{error_context}: {error}")
-        sys.exit(1)
-
-    drv_path = result.get("success")
     assert isinstance(drv_path, str)
     return build(drv_path)
 

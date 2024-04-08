@@ -94,15 +94,11 @@ lib.fix (self: {
     };
   in
     if validated.wrong != []
-    then {
-      error = ''
+    then throw ''
         build requirements could not be satisfied by the current package set:
          - ${lib.concatMapStringsSep "\n- " self.messages.formatFailure validated.wrong}
-      '';
-    }
-    else {
-      success = (python.withPackages (ps: map (d: ps.${d.pname}) validated.right)).drvPath;
-    };
+      ''
+    else python.withPackages (ps: map (d: ps.${d.pname}) validated.right);
 
   makeEditable = import ./editable.nix {inherit lib;};
 })
