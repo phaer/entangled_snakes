@@ -41,7 +41,7 @@ def lock_command(args: argparse.Namespace) -> None:
         project_root=args.project,
         python=python,
     )
-    lock.lock(pyproject)
+    lock.lock(pyproject, python=python)
 
 
 def main() -> None:

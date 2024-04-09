@@ -49,6 +49,7 @@ lib.fix (self: {
     };
   in
     builtins.derivation {
+      # TODO allow impure builds via __noChroot = true;
       inherit (buildPython.stdenv) system;
       name = "${project.pyproject.project.name or "unnamed"}";
       src = project.projectRoot;

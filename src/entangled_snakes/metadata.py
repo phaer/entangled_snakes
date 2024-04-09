@@ -26,8 +26,6 @@ import tarfile
 
 import requests
 from packaging.metadata import parse_email
-import build
-import build.util
 
 from . import nix
 
@@ -51,25 +49,7 @@ class MetadataPreparationFailed(Exception):
         self.stderr = exc.exception.stderr
 
 
-def build_runner(build_env: Path):
-    def run(args: Sequence[str], cwd: Optional[str], extra_environ: Optional[Mapping[str, str]]):
-        log.debug(f"building {args}")
-
-        env = {
-            'PATH': build_env / 'bin',
-            # TODO get from build_env
-            'PYTHONPATH': build_env / 'lib/python3.11/site-packages'
-        }
-        if extra_environ:
-            env.update(extra_environ)
-
-        print('args', args)
-        print('cwd', cwd)
-        print('env', env)
-        subprocess.run(args, check=True, cwd=cwd, env=env, encoding="utf-8")
-    return run
-
-def fetch_metadata(candidate):
+def fetch_metadata(python, candidate):
     metadata = metadata_from_pep658(candidate)
     if metadata:
         log.debug(f"Found metadata for {candidate} via pep658")
@@ -91,26 +71,10 @@ def fetch_metadata(candidate):
                 )
                 distribution_file.seek(0)
                 with source_tree_from_sdist(candidate, distribution_file) as source_dir:
-                    pyproject_toml = build._read_pyproject_toml(source_dir / 'pyproject.toml')
-                    build_system = build._parse_build_system_table(pyproject_toml)
-                    build_env = Path(nix.make_build_environment(
-                        # TODO get python from cli args
-                        nix.PythonInterpreter().resolve_system(),
-                        build_system['requires']
-                    ))
-                    print("BUILD_ENV", build_env)
-                    builder = build.ProjectBuilder(
-                        source_dir,
-                        python_executable=str(build_env / 'bin/python'),
-                        runner=build_runner(build_env)
-                    )
-                    #metadata = build.util._project_wheel_metadata(builder)
-                    from IPython import embed
-                    embed()
+                    metadata_dir = (nix.metadata_from_source_dir(python, source_dir) / "output").resolve()
+                    with open(metadata_dir / 'METADATA', "r") as f:
+                        return parse_metadata(f)
 
-                #        metadata = project_wheel_metadata(source_tree)
-                #    except BuildBackendException as e:
-                #        raise MetadataPreparationFailed(e, candidate)
 
     if metadata:
         log.debug(f"Found metadata for {candidate} in the {where} {candidate.url}")

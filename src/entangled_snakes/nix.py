@@ -152,6 +152,42 @@ def make_build_environment(
     return build(drv_path)
 
 
+def metadata_from_source_dir(
+    python: PythonInterpreter,
+    source_dir: Path,
+)-> Path:
+    """
+    This is used internally for pep517-compatible builds.
+    """
+    error_context = (
+        f"Error while preparing getting metadata for {source_dir}"
+    )
+    try:
+        drv_path = evaluate(
+            f"""
+              let
+                flake = builtins.getFlake "{SELF_FLAKE}";
+              in
+              (flake.lib.pep517.callHook {{
+                python = {python.as_nix_snippet()};
+                project = flake.lib.loadProject {source_dir};
+                hook = "prepare_metadata_for_build_wheel";
+              }}).drvPath
+            """,
+            check=True,
+            raw=True
+        )
+    except subprocess.CalledProcessError as e:
+        log.fatal(f"Nix {error_context}: {e.stderr}")
+        sys.exit(1)
+
+    assert isinstance(drv_path, str)
+    try:
+        return Path(build(drv_path))
+    except subprocess.CalledProcessError as e:
+        log.fatal(f"Nix {error_context}: {e.stderr}")
+        sys.exit(1)
+
 def pypi_to_nix_hash(hashes):
     typ = "sha256"
     nix_hash = b64encode(b16decode(hashes[typ].upper())).decode("utf-8")

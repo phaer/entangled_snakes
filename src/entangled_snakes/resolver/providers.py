@@ -2,6 +2,7 @@ import logging
 from operator import attrgetter
 from typing import Sequence
 
+from entangled_snakes.metadata import fetch_metadata
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -10,15 +11,14 @@ from resolvelib.providers import AbstractProvider
 from . import Identifier
 from .candidate import Candidate
 
-from ..metadata import fetch_metadata
-
 
 log = logging.getLogger(__name__)
 
 
 class PyPiProvider(AbstractProvider):
-    def __init__(self, finder, pre_installed: Sequence[Candidate]):
+    def __init__(self, finder, python, pre_installed: Sequence[Candidate]):
         self.finder = finder
+        self.python = python
         self.pre_installed = {
             self.identify(candidate): candidate
             for candidate in pre_installed
@@ -67,9 +67,10 @@ class PyPiProvider(AbstractProvider):
 
     def get_dependencies(self, candidate):
         log.info(f"getting dependencies for {candidate} ({candidate.filename})")
+        metadata = fetch_metadata(self.python, candidate)
         return [
             Requirement(d.replace("\n", " "))
-            for d in candidate.metadata.get('requires_dist', [])
+            for d in metadata.get('requires_dist', [])
         ]
         # deps = candidate.dependencies
         ## if candidate.extras:

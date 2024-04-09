@@ -1,6 +1,5 @@
 from typing import Sequence
 
-from entangled_snakes.metadata import fetch_metadata
 import resolvelib
 from packaging.requirements import Requirement
 
@@ -21,27 +20,29 @@ def print_graph_as_tree(graph, node=None, visited=None, level=0):
             print_graph_as_tree(graph, successor, visited, level + 1)
 
 
-def lock(pyproject: project.Project):
+def lock(pyproject: project.Project, python: nix.PythonInterpreter):
     from IPython import embed
     from pprint import pprint
 
-    #installedFromNixpkgs: Sequence[Candidate] = []
-    #for package in pyproject.get("fromNixpkgs", []):
-    #    if package.get("drv", None):
-    #        wheel = nix.get_wheel_from_derivation(package["drv"])
-    #        candidate = Candidate(wheel.name, url=f"file://{wheel.absolute()}")
-    #        installedFromNixpkgs.append(candidate)
+    installedFromNixpkgs: Sequence[Candidate] = []
+    for package in pyproject.get("fromNixpkgs", []):
+        if package.get("drv", None):
+            wheel = nix.get_wheel_from_derivation(package["drv"])
+            candidate = Candidate(wheel.name, url=f"file://{wheel.absolute()}")
+            installedFromNixpkgs.append(candidate)
 
-    #requirements: Sequence[Requirement] = []
-    #for package in pyproject.get("toFetch", []):
-    #    requirements.extend([Requirement(r) for r in package.get("requirements", [])])
+    requirements: Sequence[Requirement] = []
+    for package in pyproject.get("toFetch", []):
+        requirements.extend([Requirement(r) for r in package.get("requirements", [])])
 
-    #pprint(installedFromNixpkgs)
-    #pprint(requirements)
-    requirements = [Requirement('pydantic-core==2.14.6')]
+    pprint(installedFromNixpkgs)
+    pprint(requirements)
+    #requirements = [Requirement("ruff==0.0.291")]
+    #requirements = [Requirement("billogram-api==1.0.1")]
+    #requirements = [Requirement('pydantic-core==2.14.6')]
 
     finder = SimpleIndexFinder()
-    provider = PyPiProvider(finder, pre_installed=[])#installedFromNixpkgs)
+    provider = PyPiProvider(finder, python, pre_installed=installedFromNixpkgs)
     reporter = reporters.DebugReporter()
     resolver = resolvelib.Resolver(provider, reporter)
     result = resolver.resolve(requirements, max_rounds=500)
