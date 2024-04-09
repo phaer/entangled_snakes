@@ -43,7 +43,7 @@ lib.fix (self: {
       extraPath ? "",
       extraPythonPath ? "",
   }: let
-    buildSystem = project.pyproject.build-system.build-backend or "setuptools.build_meta.__legacy__";
+    buildSystem = project.pyproject.build-system.build-backend or "setuptools.build_meta:__legacy__";
     buildPython = self.makeBuildEnvironmentFromProject {
       inherit python project;
     };
